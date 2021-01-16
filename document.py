@@ -1,8 +1,7 @@
-
 class Document:
 
     def __init__(self, tweet_id, tweet_date=None, full_text=None, url=None, retweet_text=None, retweet_url=None,
-                 quote_text=None, quote_url=None, term_doc_dictionary=None, doc_length=0,max_word=None):
+                 quote_text=None, quote_url=None, term_doc_dictionary=None, doc_length=0, max_word=None):
         """
         :param tweet_id: tweet id
         :param tweet_date: tweet date
@@ -14,6 +13,7 @@ class Document:
         :param quote_url: quote url
         :param term_doc_dictionary: dictionary of term and documents.
         :param doc_length: doc length
+        :param max_word: most frequent_word_counter
         """
         self.tweet_id = tweet_id
         self.tweet_date = tweet_date
@@ -25,6 +25,4 @@ class Document:
         self.quote_url = quote_url
         self.term_doc_dictionary = term_doc_dictionary
         self.doc_length = doc_length
-
-
-        self.max_word=max_word
+        self.max_word = max_word

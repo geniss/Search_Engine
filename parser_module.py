@@ -1,22 +1,27 @@
+import json
 import math
+import re
 import string
+
 from nltk.corpus import stopwords
-from spellchecker import SpellChecker, spellchecker
+from spellchecker import SpellChecker
 
 from document import Document
-from term import Term
 from stemmer import Stemmer
-import re
-import json
+from term import Term
 
 
 class Parse:
-    __slots__ = ['word_dict', 'stemmer', 'stop_words']
+    __slots__ = ['word_dict', 'stemmer', 'stop_words', 'rules', 'spell', 'min_length']
 
-    def __init__(self, stemming):
+    def __init__(self, config):
         self.word_dict = {}
-        self.stemmer = Stemmer(stemming)
-        self.stop_words = [self.stemmer.stem_term(word) for word in stopwords.words('english')] + ['rt', 't.co']
+        self.stemmer = Stemmer(config.stemming)
+        self.stop_words = [self.stemmer.stem_term(word) for word in stopwords.words('english')] + ['rt', 't.co',
+                                                                                                   'https']
+        self.rules = config.parser_rules
+        self.spell = SpellChecker()
+        self.min_length = config.min_length
 
     # helper function for numberTostring-->return 3 digit after the point
     @staticmethod
@@ -75,111 +80,6 @@ class Parse:
     def removeEmojis(text):
         return text.encode('ascii', 'ignore').decode('ascii')
 
-    # Build a tokenize---> split by spaces
-    def Tokenize(self, text):
-        output = []
-        word_list = [word for word in [self.stemmer.stem_term(self.strip_punctuations(word)) for word in text.split()]
-                     if word]
-        size = len(word_list)
-
-        # find all the quotes in this doc
-        # re.findall() find all quotes and return a list of quotes without " "
-
-        quotes = [self.add_to_dict('"{}"'.format(quote)) for quote in re.findall(r'"(.*?)"', text)]
-        for q in quotes:
-            output.append(q)
-
-        # The main loop
-        for i in range(size):
-            word = word_list[i]
-
-            if (i + 1) < size and 'A' <= word[0] <= 'Z' and 'A' <= word_list[i + 1][0] <= 'Z':
-                j = i + 2
-                entity = word + ' ' + word_list[i + 1]
-                output.append(self.add_entity_to_dict(entity))
-                while j < size and 'A' <= word_list[j][0] <= 'Z':
-                    entity = entity + ' ' + word_list[j]
-                    output.append(self.add_entity_to_dict(entity))
-                    j += 1
-
-            if (i + 1) < size and word.lower() in ['less', 'more']:
-                new_term = f'{word} {word_list[i + 1]}'
-                if word_list[i + 1].lower() == 'than' and i + 2 < size:
-                    new_term += f' {word_list[i + 2]}'
-                output.append(self.add_to_dict(new_term.lower()))
-
-            if self.isNumber(word):
-                try:
-                    if i + 1 < size and word_list[i + 1].lower() in [self.stemmer.stem_term('percent'),
-                                                                    self.stemmer.stem_term('percentage')]:
-                        i += 1
-                        word += '%'
-
-                    elif i + 1 < size and word_list[i + 1].lower() in [self.stemmer.stem_term('dollar'),
-                                                                    self.stemmer.stem_term('dollars')]:
-                        i += 1
-                        word += '$'
-
-                    # check if the number is actually separate to 2 word: 35 3/5
-                    elif i + 1 < size and self.isNumber(word_list[i + 1]) and '/' in word_list[i + 1]:
-                        word += ' ' + word_list[i + 1]
-                    # cases of Thousand=K    Million=M    Billion=B--->the function numberToString do it
-                    elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('thousand'):
-                        i += 1
-                        word = self.numberToString(float(word) * 1000)
-                    elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('million'):
-                        i += 1
-                        word = self.numberToString(float(word) * 1000000)
-                    elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('billion'):
-                        i += 1
-                        word = self.numberToString(float(word) * 1000000000)
-                    else:
-                        word = self.numberToString(float(word))
-                except:
-                    pass
-                output.append(self.add_to_dict(word))
-            # hashtag
-            elif word[0] == '#':
-                for word in self.hashtag(word):
-                    output.append(self.add_to_dict(word))
-            # URL
-            elif word[0:4] == "http":
-                for word in self.URL(word):
-                    output.append(self.add_to_dict(word))
-
-            # Tag
-            elif word[0] == '@':
-                output.append(self.add_to_dict(word))
-            else:
-                output.append(self.add_to_dict(word))
-        return output
-
-    def add_to_dict(self, word):
-        low_case = word.lower()
-
-        if low_case in self.stop_words:
-            return None
-        if low_case in self.word_dict.keys():
-            self.word_dict[low_case].numOfInterfaces += 1
-            if word == low_case:
-                self.word_dict[low_case].text = low_case
-        else:
-            self.word_dict[low_case] = Term(word)
-        return self.word_dict[low_case]
-
-    def add_entity_to_dict(self, word):
-        low_case = word.lower()
-        if low_case in self.stop_words:
-            return None
-        if low_case in self.word_dict.keys():
-            self.word_dict[low_case].numOfInterfaces += 1
-            if word == low_case:
-                self.word_dict[low_case].text = low_case
-        else:
-            self.word_dict[low_case] = Term(word)
-            self.word_dict[low_case].is_entity = True
-        return self.word_dict[low_case]
-
     # #stayAtHome--->['#stayAtHome', 'stay', 'At',Home]
     @staticmethod
     def hashtag(term):
@@ -213,15 +113,132 @@ class Parse:
                 pass
         document[2] = full_text
 
-    def parse_sentence(self, text):
-        """
-        This function tokenize, remove stop words and apply lower case for every word within the text
-        :param text:
-        :return:
-        """
+    @staticmethod
+    def add_or_inc(d, term):
+        if not term:
+            return
+        elif term not in d:
+            d[term] = 0
+        d[term] += 1
 
-        text_tokens = [token for token in self.Tokenize(text) if token]
-        return text_tokens
+    def add_to_dict(self, word):
+        low_case = word.lower()
+        if low_case in self.stop_words:
+            return None
+        if len(low_case) < self.min_length:
+            return None
+        if self.rules['capitals']:
+            if low_case in self.word_dict.keys():
+                if word == low_case:
+                    self.word_dict[low_case].text = low_case
+            else:
+                self.word_dict[low_case] = Term(word)
+        else:
+            if low_case not in self.word_dict.keys():
+                self.word_dict[low_case] = Term(low_case)
+        return self.word_dict[low_case]
+
+    def add_entity_to_dict(self, word):
+        low_case = word.lower()
+        if low_case in self.stop_words:
+            return None
+        if low_case in self.word_dict.keys():
+            self.word_dict[low_case].numOfInterfaces += 1
+            if word == low_case:
+                self.word_dict[low_case].text = low_case
+        else:
+            self.word_dict[low_case] = Term(word)
+            self.word_dict[low_case].is_entity = True
+        return self.word_dict[low_case]
+
+    def Tokenize(self, text):
+        output = {}
+        if self.rules['spellcheck']:
+            word_list = [self.spell.correction(word) for word in
+                         [self.stemmer.stem_term(self.strip_punctuations(word)) for word in text.split()]
+                         if word]
+        else:
+            word_list = [word for word in
+                         [self.stemmer.stem_term(self.strip_punctuations(word)) for word in text.split()]
+                         if word]
+
+        size = len(word_list)
+
+        # find all the quotes in this doc
+        # re.findall() find all quotes and return a list of quotes without " "
+        if self.rules['quotes']:
+            quotes = [self.add_to_dict('"{}"'.format(quote)) for quote in re.findall(r'"(.*?)"', text)]
+            for q in quotes:
+                self.add_or_inc(output, q)
+
+        # The main loop
+        for i in range(size):
+            word = word_list[i]
+
+            if self.rules['entity']:
+                if (i + 1) < size and 'A' <= word[0] <= 'Z' and 'A' <= word_list[i + 1][0] <= 'Z':
+                    j = i + 2
+                    entity = word + ' ' + word_list[i + 1]
+                    self.add_or_inc(output, self.add_entity_to_dict(entity))
+                    while j < size and 'A' <= word_list[j][0] <= 'Z':
+                        entity = entity + ' ' + word_list[j]
+                        self.add_or_inc(output, self.add_entity_to_dict(entity))
+                        j += 1
+            if self.rules['less_more']:
+                if (i + 1) < size and word.lower() in ['less', 'more']:
+                    new_term = f'{word} {word_list[i + 1]}'
+                    if word_list[i + 1].lower() == 'than' and i + 2 < size:
+                        new_term += f' {word_list[i + 2]}'
+                    self.add_or_inc(output, self.add_to_dict(new_term.lower()))
+            if self.isNumber(word):
+                if self.rules['number']:
+                    try:
+                        if i + 1 < size and word_list[i + 1].lower() in [self.stemmer.stem_term('percent'),
+                                                                         self.stemmer.stem_term('percentage')]:
+                            i += 1
+                            word += '%'
+
+                        elif i + 1 < size and word_list[i + 1].lower() in [self.stemmer.stem_term('dollar'),
+                                                                           self.stemmer.stem_term('dollars')]:
+                            i += 1
+                            word += '$'
+
+                        # check if the number is actually separate to 2 word: 35 3/5
+                        elif i + 1 < size and self.isNumber(word_list[i + 1]) and '/' in word_list[i + 1]:
+                            word += ' ' + word_list[i + 1]
+                        # cases of Thousand=K    Million=M    Billion=B--->the function numberToString do it
+                        elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('thousand'):
+                            i += 1
+                            word = self.numberToString(float(word) * 1000)
+                        elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('million'):
+                            i += 1
+                            word = self.numberToString(float(word) * 1000000)
+                        elif i + 1 < size and word_list[i + 1].lower() == self.stemmer.stem_term('billion'):
+                            i += 1
+                            word = self.numberToString(float(word) * 1000000000)
+                        else:
+                            word = self.numberToString(float(word))
+                    except:
+                        pass
+                    self.add_or_inc(output, self.add_to_dict(word))
+            # hashtag
+            elif word[0] == '#':
+                if self.rules['hashtag']:
+                    for word in self.hashtag(word):
+                        self.add_or_inc(output, self.add_to_dict(word))
+            # URL
+            elif word[0:4] == "http":
+                if self.rules['url']:
+                    for word in self.URL(word):
+                        self.add_or_inc(output, self.add_to_dict(word))
+
+            # Tag
+            elif word[0] == '@':
+                if self.rules['tag']:
+                    self.add_or_inc(output, self.add_to_dict(word))
+            else:
+                self.add_or_inc(output, self.add_to_dict(word))
+        return output
 
     def parse_doc(self, doc_as_list):
         """
@@ -238,31 +255,21 @@ class Parse:
         quote_text = doc_as_list[6]
         quote_url = doc_as_list[7]
 
-        self.extendURLs(doc_as_list)
-        full_text = self.removeEmojis(doc_as_list[2])
+        if self.rules['ext_url']:
+            self.extendURLs(doc_as_list)
+            full_text = doc_as_list[2]
+
+        if self.rules['emoji']:
+            full_text = self.removeEmojis(full_text)
+
         full_text = full_text.replace('\n', ' ')
-        term_dict = {}
-        tokenized_text = self.parse_sentence(doc_as_list[2])
 
-        #return out
-        doc_length = len(tokenized_text)  # after text operations.
+        term_dict = self.Tokenize(full_text)
 
-        #how many time term in this doc
-        for term in tokenized_text:
-            if term not in term_dict.keys():
-                term_dict[term] = 1
-            else:
-                term_dict[term] += 1
+        doc_length = sum(term_dict.values())
 
-        max_word=0
-
-        for term in term_dict.keys():
-            if term_dict[term] > max_word:
-                max_word=term_dict[term]
-
-
+        max_word = max(term_dict.values())
 
         document = Document(tweet_id, tweet_date, full_text, url, retweet_text, retweet_url, quote_text,
-                            quote_url, term_dict, doc_length,max_word)
+                            quote_url, term_dict, doc_length, max_word)
         return document
-

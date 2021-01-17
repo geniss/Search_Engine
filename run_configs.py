@@ -1,7 +1,7 @@
 class RunConfigClass:
-    def __init__(self, stemming=False, ext_url=True, emoji=True, quotes=False, entity=False,
-                 less_more=True, number=True, hashtag=True, url=True, tag=True, capitals=False, spellcheck=False,
-                 min_length=1, min_relevant=1, the_count=4, wordnet_count=4, min_occurrence=3, ext_val=0.1,
+    def __init__(self, stemming=True, ext_url=True, emoji=True, quotes=False, entity=False,
+                 less_more=True, number=True, hashtag=True, url=False, tag=True, capitals=False, spellcheck=False,
+                 min_length=2, min_relevant=1, the_count=4, wordnet_count=2, min_occurrence=4, ext_val=0.4,
                  cos_sym=True):
         self.stemming = stemming
         self.parser_rules = {'ext_url': ext_url, 'emoji': emoji, 'quotes': quotes,

@@ -1,7 +1,8 @@
 import pickle
-import requests
-import zipfile
 import re
+import zipfile
+
+import requests
 
 
 def save_obj(obj, name):

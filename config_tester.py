@@ -4,8 +4,8 @@ import time
 import timeit
 
 import pandas as pd
-
 from tqdm import tqdm
+
 import metrics
 import run_configs
 import search_engine_best
@@ -73,37 +73,24 @@ def test(engine, options):
 if __name__ == '__main__':
     bench_data_path = r'data/benchmark_data_train.snappy.parquet'
     methods_opt = [set(), {1}, {2}, {3}, {1, 2}, {1, 3}, {2, 3}, {1, 2, 3}]
-    # v_options = {
-    #     'stemming': [True, False],
-    #     'ext_url': [True, False],
-    #     'emoji': [True, False],
-    #     'quotes': [True, False],
-    #     'entity': [True, False],
-    #     'less_more': [True, False],
-    #     'hashtag': [True, False],
-    #     'url': [True, False],
-    #     'tag': [True, False],
-    #     'capitals': [True, False],
-    #     'cos_sym': [True, False],
-    #     'min_length': [i for i in range(1, 4, 2)],
-    #     'min_relevant': [i for i in range(1, 6, 2)],
-    #     'the_count': [i for i in range(2, 5, 2)],
-    #     'wordnet_count': [i for i in range(2, 5, 2)],
-    #     'min_occurrence': [i for i in range(1, 6, 2)],
-    #     'ext_val': [i / 10 for i in range(1, 10, 2)]
-    # }
     v_options = {
         'stemming': [True, False],
         'ext_url': [True, False],
         'emoji': [True, False],
         'quotes': [True, False],
         'entity': [True, False],
-        'capitals': [True]
-        # 'less_more': [True, False],
-        # 'hashtag': [True, False],
-        # 'url': [True, False],
-        # 'tag': [True, False],
-        # 'capitals': [True, False]
+        'less_more': [True, False],
+        'hashtag': [True, False],
+        'url': [True, False],
+        'tag': [True, False],
+        'capitals': [True, False],
+        'cos_sym': [True, False],
+        'min_length': [i for i in range(1, 4, 2)],
+        'min_relevant': [i for i in range(1, 6, 2)],
+        'the_count': [i for i in range(2, 5, 2)],
+        'wordnet_count': [i for i in range(2, 5, 2)],
+        'min_occurrence': [i for i in range(1, 6, 2)],
+        'ext_val': [i / 10 for i in range(1, 10, 2)]
     }
     var_options_list = generate_var_options(v_options)
     progressbar = tqdm(total=len(var_options_list))

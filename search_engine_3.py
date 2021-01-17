@@ -1,11 +1,13 @@
 import pandas as pd
 
 import utils
+from configuration import ConfigClass
 from indexer import Indexer
 from parser_module import Parse
-from searcher import Searcher
-from configuration import ConfigClass
 from run_configs import RunConfigClass
+from searcher import Searcher
+
+
 # DO NOT CHANGE THE CLASS NAME
 class SearchEngine:
     # DO NOT MODIFY THIS SIGNATURE
@@ -49,8 +51,7 @@ class SearchEngine:
         Input:
             fn - file name of pickled index.
         """
-        load = utils.load_obj(fn.strip('.pkl'))
-        self._indexer.load_index(load)
+        self._indexer.load_index(fn.strip('.pkl'))
 
     # DO NOT MODIFY THIS SIGNATURE
     # You can change the internal implementation as you see fit.

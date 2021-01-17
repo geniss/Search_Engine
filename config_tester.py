@@ -28,7 +28,7 @@ def generate_var_options(var_options):
 
 def save_to_csv(row):
     global first
-    csv_file = open('outputs.csv', 'w' if first else 'a', newline='')
+    csv_file = open('config_tester_results.csv', 'w' if first else 'a', newline='')
     fieldnames = row.keys()
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     if first:
@@ -71,35 +71,44 @@ def test(engine, options):
 
 
 if __name__ == '__main__':
-    bench_data_path = r'data\benchmark_data_train.snappy.parquet'
-    methods_opt = [{}, {1}, {2}, {3}, {1, 2}, {1, 3}, {2, 3}, {1, 2, 3}]
+    bench_data_path = r'data/benchmark_data_train.snappy.parquet'
+    methods_opt = [set(), {1}, {2}, {3}, {1, 2}, {1, 3}, {2, 3}, {1, 2, 3}]
+    # v_options = {
+    #     'stemming': [True, False],
+    #     'ext_url': [True, False],
+    #     'emoji': [True, False],
+    #     'quotes': [True, False],
+    #     'entity': [True, False],
+    #     'less_more': [True, False],
+    #     'hashtag': [True, False],
+    #     'url': [True, False],
+    #     'tag': [True, False],
+    #     'capitals': [True, False],
+    #     'cos_sym': [True, False],
+    #     'min_length': [i for i in range(1, 4, 2)],
+    #     'min_relevant': [i for i in range(1, 6, 2)],
+    #     'the_count': [i for i in range(2, 5, 2)],
+    #     'wordnet_count': [i for i in range(2, 5, 2)],
+    #     'min_occurrence': [i for i in range(1, 6, 2)],
+    #     'ext_val': [i / 10 for i in range(1, 10, 2)]
+    # }
     v_options = {
         'stemming': [True, False],
         'ext_url': [True, False],
         'emoji': [True, False],
         'quotes': [True, False],
         'entity': [True, False],
-        'less_more': [True, False],
-        'hashtag': [True, False],
-        'url': [True, False],
-        'tag': [True, False],
-        'capitals': [True, False],
-        'cos_sym': [True, False],
-        'min_length': [i for i in range(1, 5)],
-        'min_relevant': [i for i in range(1, 5)],
-        'the_count': [i for i in range(1, 10)],
-        'wordnet_count': [i for i in range(1, 10)],
-        'min_occurrence': [i for i in range(1, 5)],
-        'ext_val': [i / 10 for i in range(1, 10)]
+        'capitals': [True]
+        # 'less_more': [True, False],
+        # 'hashtag': [True, False],
+        # 'url': [True, False],
+        # 'tag': [True, False],
+        # 'capitals': [True, False]
     }
-    """
-     min_length=3, min_relevant=1, the_count=5, wordnet_count=5, min_occurrence=2, ext_val=0.5
-    """
     var_options_list = generate_var_options(v_options)
-    print('a')
     progressbar = tqdm(total=len(var_options_list))
     for opt in var_options_list:
-        config = run_configs.ConfigClass(**opt)
+        config = run_configs.RunConfigClass(**opt)
         opt_engine = search_engine_best.SearchEngine(config)
         opt['build_idx_time'] = timeit.timeit(
             "opt_engine.build_index_from_parquet(bench_data_path)",

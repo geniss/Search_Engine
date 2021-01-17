@@ -107,4 +107,4 @@ class Searcher:
                     relevant_docs[doc_id] = {}
                 relevant_docs[doc_id][term] = tf * idf  # wiq
 
-        return {doc: relevant_docs[doc] for doc in relevant_docs if len(relevant_docs[doc]) > self._min_relevant}
+        return {doc: relevant_docs[doc] for doc in relevant_docs if len(relevant_docs[doc]) >= min(self._min_relevant, len(query_terms))}

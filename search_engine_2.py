@@ -4,19 +4,25 @@ import utils
 from indexer import Indexer
 from parser_module import Parse
 from searcher import Searcher
-
-
+from configuration import ConfigClass
+from run_configs import RunConfigClass
 # DO NOT CHANGE THE CLASS NAME
 class SearchEngine:
     # DO NOT MODIFY THIS SIGNATURE
     # You can change the internal implementation, but you must have a parser and an indexer.
-    __slots__ = ['_config', '_indexer', '_parser', '_model']
+    __slots__ = ['_config', '_indexer', '_parser', '_model', 'searcher', '_run_config', '_config']
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, run_config=None):
+        if not config:
+            config = ConfigClass()
+        if not run_config:
+            run_config = RunConfigClass()
+        self._run_config = run_config
         self._config = config
-        self._parser = Parse(config)
-        self._indexer = Indexer(config)
+        self._parser = Parse(run_config)
+        self._indexer = Indexer(run_config)
         self._model = None
+        self.searcher = Searcher(self._parser, self._indexer, run_config, model=self._model)
 
     # DO NOT MODIFY THIS SIGNATURE
     # You can change the internal implementation as you see fit.
@@ -30,16 +36,10 @@ class SearchEngine:
         """
         df = pd.read_parquet(fn, engine="pyarrow")
         # Iterate over every document in the file
-        number_of_documents = 0
         for document in df.values:
             # parse the document
             parsed_list = self._parser.parse_doc(document)
             self._indexer.add_new_doc(parsed_list)
-            number_of_documents += 1
-            # index the document data
-        print('Finished parsing and indexing.')
-
-        self._indexer.CreatInvertedIndex(self._parser.word_dict, number_of_documents)
 
     # DO NOT MODIFY THIS SIGNATURE
     # You can change the internal implementation as you see fit.
@@ -75,5 +75,4 @@ class SearchEngine:
             a list of tweet_ids where the first element is the most relevant
             and the last is the least relevant result.
         """
-        searcher = Searcher(self._parser, self._indexer, model=self._model)
-        return searcher.search(query, None, 2)
+        return self.searcher.search(query, None, {2})

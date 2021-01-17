@@ -1,3 +1,7 @@
 /venv/
 /.idea/
 /data/
+/__pycache__/
+*.xlsx
+*.csv
+*.log
